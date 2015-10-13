@@ -10551,8 +10551,8 @@ function Dispatcher(opts) {
       return console.log('disconnect');
     });
     setTimeout(function (x) {
-      window.location.href = '#' + mesh.id;
-      var url = window.location.href.toString();
+      var url = window.location.href.toString() + '#' + mesh.id;
+      window.location.hash = '#' + mesh.id;
       urlElem.value = url;
       console.log(mesh.id);
     }, 100);
@@ -10568,10 +10568,12 @@ function Dispatcher(opts) {
       if (--peers == 0) {
         uploadbtn.style['cursor'] = 'pointer';
         uploadbtn.style['opacity'] = '.6';
-        uploadbtn.text = 'reinitializing...';
+        uploadbtn.text = 'transmitted - reinitializing';
       }
     });
-    urlElem.value = window.location.href.toString();
+
+    var url = window.location.href.toString();
+    urlElem.value = url;
   });
 
   this.on('peer', function (peer) {
@@ -10579,7 +10581,7 @@ function Dispatcher(opts) {
     uploadbtn.style['cursor'] = 'pointer';
     uploadbtn.style['opacity'] = '1';
     peers++;
-    uploadbtn.text = 'SEND to ' + peers + ' peer' + (peers > 1 ? 's' : '');
+    uploadbtn.text = 'SEND A FILE to ' + peers + ' peer' + (peers > 1 ? 's' : '');
 
     var receive = new FileWriteStream();
     peer.pipe(receive).on('file', function (file) {
@@ -10597,7 +10599,6 @@ function Dispatcher(opts) {
     var file = new FileReadStream(input);
     mesh.wrtc.peers.forEach(function (peer, key) {
       console.log('sending file to peer #', key);
-      uploadbtn.text = 'sending file...';
       file.pipe(peer);
       file.on('end', function (x) {
         return console.log('end file stream');
@@ -10635,9 +10636,7 @@ function Swarm(opts) {
   if (!opts) opts = { id: null };
   if (!this.id) {
     this.id = opts.id || cuid();
-    this.wrtc = webrtcSwarm(signalhub(this.id, [
-    //'http://localhost:7000'
-    'https://peerjs.guth.so:65116']), {});['peer', 'connect', 'disconnect'].forEach(function (event) {
+    this.wrtc = webrtcSwarm(signalhub(this.id, ['https://peerjs.guth.so:65116']), {});['peer', 'connect', 'disconnect'].forEach(function (event) {
       _this.wrtc.on(event, function (x) {
         return _this.emit(event, x);
       });
