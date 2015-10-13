@@ -10635,7 +10635,7 @@ function Swarm(opts) {
   if (!opts) opts = { id: null };
   if (!this.id) {
     this.id = opts.id || cuid();
-    this.wrtc = webrtcSwarm(signalhub(this.id, ['http://x:7000']), {});['peer', 'connect', 'disconnect'].forEach(function (event) {
+    this.wrtc = webrtcSwarm(signalhub(this.id, ['https://peerjs.guth.so:65116']), {});['peer', 'connect', 'disconnect'].forEach(function (event) {
       _this.wrtc.on(event, function (x) {
         return _this.emit(event, x);
       });
