@@ -6109,6 +6109,7 @@ function FileWriteStream(callback, opts) {
   this._bytesreceived = 0;
   this.callback = callback;
   this.type = (opts || {}).type;
+  this.size = (opts || {}).size;
 }
 
 inherits(FileWriteStream, Writable);
@@ -6158,6 +6159,7 @@ FileWriteStream.prototype._write = function(chunk, encoding, callback) {
     // if the incoming data has been passed through, then add to the bytes received buffer
     if (processed) {
       writeStream._bytesreceived += processed.length;
+      writeStream.emit('progress', writeStream._bytesreceived)
       writeStream._buffers.push(processed);
     }
 
@@ -7196,7 +7198,7 @@ inherits(NamedReadStream, FileReadStream);
 module.exports = NamedReadStream;
 
 NamedReadStream.prototype._generateHeaderBlocks = function(file, opts, callback) {
-  var fields = (opts || {}).fields || ['lastModified', 'name', 'type'];
+  var fields = (opts || {}).fields || ['lastModified', 'name', 'type', 'size'];
   var metadata = {};
 
   // initialise the metadata
@@ -7251,6 +7253,7 @@ NamedWriteStream.prototype._preprocess = function(data, callback) {
   if (! this.metadata) {
     try {
       this.metadata = JSON.parse(data.toString());
+      this.emit('header', this.metadata);
       return callback();
     }
     catch (e) {
@@ -10547,7 +10550,6 @@ function Dispatcher(opts) {
   var uploadbtn = document.getElementById('uploadLink');
   var downloadbtn = document.getElementById('downloadLink');
   var mesh;
-  var peers = 0;
 
   this.on('noHash', function (x) {
     return _this.emit('initMesh');
@@ -10580,7 +10582,7 @@ function Dispatcher(opts) {
       window.location.hash = '#' + hash;
     }
     setTimeout(function (x) {
-      urlElem.value = url;
+      return urlElem.value = url;
     }, 100);
   });
 
@@ -10595,7 +10597,11 @@ function Dispatcher(opts) {
       uploadbtn.style['cursor'] = 'default';
       uploadbtn.style['opacity'] = '.6';
       uploadbtn.text = 'reinitializing';
-    } else uploadbtn.text = 'send a file to ' + peers + ' peer' + (peers > 1 ? 's' : '');
+    } else {
+      uploadbtn.style['cursor'] = 'pointer';
+      uploadbtn.style['opacity'] = '1';
+      uploadbtn.text = 'send a file to ' + peers + ' peer' + (peers > 1 ? 's' : '');
+    }
   });
 
   this.on('connect', function (peer) {
@@ -10605,10 +10611,24 @@ function Dispatcher(opts) {
   });
 
   this.on('acceptFiles', function (peer) {
-    var receive = new FileWriteStream();
-    peer.pipe(receive).on('file', function (file) {
-      console.log('file received', file);
+    var writeStream = new FileWriteStream();
+    _this.emit('endWriteStream', writeStream, peer);
+    peer.pipe(writeStream).on('file', function (file) {
+      console.log('file received:', file);
       _this.emit('attachFileURL', file);
+    });
+  });
+
+  this.on('endWriteStream', function (writeStream, peer) {
+    writeStream.on('header', function (meta) {
+      console.log('incoming file size:', meta.size);
+      writeStream.on('progress', function (size) {
+        console.log('already received:', size);
+        if (meta.size <= size) {
+          writeStream.end();
+          _this.emit('acceptFiles', peer);
+        }
+      });
     });
   });
 
@@ -10621,7 +10641,7 @@ function Dispatcher(opts) {
   });
 
   this.on('fileAdded', function (input) {
-    var file = new FileReadStream(input);
+    var file = new FileReadStream(input, { fields: ['name', 'size', 'type'] });
     mesh.wrtc.peers.forEach(function (peer, key) {
       return _this.emit('sendFile', file, peer);
     });
@@ -10629,7 +10649,7 @@ function Dispatcher(opts) {
 
   this.on('sendFile', function (file, peer) {
     console.log('sending file to peer:', peer);
-    file.pipe(peer);
+    file.pipe(peer, { end: false });
     file.on('end', function (x) {
       return console.log('sadly this also ends the peer stream :-(');
     });
@@ -10664,7 +10684,7 @@ function Swarm(opts) {
   if (!(this instanceof Swarm)) return new Swarm(opts);
   if (!opts) opts = { namespace: null };
   if (!this.namespace) {
-    this.namespace = opts.namespace || cuid();
+    this.namespace = opts.namespace || cuid.slug();
     this.wrtc = webrtcSwarm(signalhub(this.namespace, ['https://peerjs.guth.so:65116']), {});['peer', 'connect', 'disconnect'].forEach(function (event) {
       _this.wrtc.on(event, function (x) {
         return _this.emit(event, x);
