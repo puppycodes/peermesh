@@ -24669,6 +24669,7 @@ function Dispatcher(opts) {
       uploadbtn.onclick = function (x) {
         return null;
       };
+      uploadbtn.className = uploadbtn.className.replace('process', 'receive');
       uploadbtn.text = 'reinitializing';
     } else {
       uploadbtn.style['cursor'] = 'pointer';
@@ -24676,7 +24677,8 @@ function Dispatcher(opts) {
       uploadbtn.onclick = function (x) {
         return document.getElementById('send').click();
       };
-      uploadbtn.text = 'send a file to ' + peers + ' peer' + (peers > 1 ? 's' : '');
+      uploadbtn.className = uploadbtn.className.replace('receive', 'process');
+      uploadbtn.text = 'send to ' + peers + ' peer' + (peers > 1 ? 's' : '');
     }
   });
 
@@ -24713,7 +24715,7 @@ function Dispatcher(opts) {
   this.on('attachFileURL', function (file) {
     var fileLink = detect('URL').createObjectURL(file);
     var filesAread = document.getElementById('files');
-    filesAread.innerHTML = '<a id=downloadLink class=\'button download red\' style=cursor:pointer;width:100%;height:62px;line-height:62px;margin-bottom:13px;text-transform:none;opacity:1; target=_blank href=' + fileLink + '>' + file.name + '</a>' + filesAread.innerHTML;
+    filesAread.innerHTML = '<a id=downloadLink class=\'button browse red\' style=cursor:pointer;width:100%;height:62px;line-height:62px;margin-bottom:13px;text-transform:none;opacity:1; target=_blank href=' + fileLink + '>' + file.name + '</a>' + filesAread.innerHTML;
   });
 
   this.on('fileAdded', function (input) {
