@@ -1,4 +1,3 @@
-
 (function e(t,n,r){function s(o,u){if(!n[o]){if(!t[o]){var a=typeof require=="function"&&require;if(!u&&a)return a(o,!0);if(i)return i(o,!0);var f=new Error("Cannot find module '"+o+"'");throw f.code="MODULE_NOT_FOUND",f}var l=n[o]={exports:{}};t[o][0].call(l.exports,function(e){var n=t[o][1][e];return s(n?n:e)},l,l.exports,e,t,n,r)}return n[o].exports}var i=typeof require=="function"&&require;for(var o=0;o<r.length;o++)s(r[o]);return s})({1:[function(require,module,exports){
 'use strict';
 
@@ -24671,6 +24670,7 @@ function Dispatcher(opts) {
       };
       uploadbtn.className = uploadbtn.className.replace('process', 'receive');
       uploadbtn.className = uploadbtn.className.replace('green', 'magenta');
+      uploadbtn.className = uploadbtn.className.replace('red', 'magenta');
       uploadbtn.text = 'reinitializing';
     } else {
       uploadbtn.style['cursor'] = 'pointer';
@@ -24794,7 +24794,7 @@ function Mesh(opts) {
   if (!this.namespace) {
     this.namespace = opts.namespace || cuid.slug();
     this.password = opts.password || cuid();
-    this.wrtc = webrtcSwarm(signalhub(this.namespace, ['https://peerjs.guth.so:65116']), {});['peer', 'connect', 'disconnect'].forEach(function (event) {
+    this.wrtc = webrtcSwarm(signalhub(this.namespace, ['http://localhost:7000']), {});['peer', 'connect', 'disconnect'].forEach(function (event) {
       _this.wrtc.on(event, function (x) {
         return _this.emit(event, x);
       });
