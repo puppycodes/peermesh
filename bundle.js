@@ -24617,7 +24617,6 @@ function Dispatcher(opts) {
 
   var urlElem = document.getElementById('url');
   var uploadbtn = document.getElementById('uploadLink');
-  var downloadbtn = document.getElementById('downloadLink');
   var mesh;
 
   this.on('noHash', function (x) {
@@ -24670,6 +24669,7 @@ function Dispatcher(opts) {
         return null;
       };
       uploadbtn.className = uploadbtn.className.replace('process', 'receive');
+      uploadbtn.className = uploadbtn.className.replace('green', 'magenta');
       uploadbtn.text = 'reinitializing';
     } else {
       uploadbtn.style['cursor'] = 'pointer';
@@ -24677,7 +24677,10 @@ function Dispatcher(opts) {
       uploadbtn.onclick = function (x) {
         return document.getElementById('send').click();
       };
-      uploadbtn.className = uploadbtn.className.replace('receive', 'process');
+      uploadbtn.className = uploadbtn.className.replace('receive', 'send');
+      uploadbtn.className = uploadbtn.className.replace('process', 'send');
+      uploadbtn.className = uploadbtn.className.replace('magenta', 'green');
+      uploadbtn.className = uploadbtn.className.replace('red', 'green');
       uploadbtn.text = 'send to ' + peers + ' peer' + (peers > 1 ? 's' : '');
     }
   });
@@ -24691,31 +24694,55 @@ function Dispatcher(opts) {
   this.on('acceptFiles', function (peer) {
     var writeStream = new FileWriteStream();
     var decrypt = crypto.createDecipher(algorithm, mesh.password);
-    _this.emit('endWriteStream', writeStream, peer, decrypt);
+    writeStream.on('header', function (meta) {
+      return _this.emit('handleDownload', meta, peer, writeStream, decrypt);
+    });
     peer.pipe(decrypt).pipe(writeStream).on('file', function (file) {
       console.log('file received:', file);
       _this.emit('attachFileURL', file);
     });
   });
 
-  this.on('endWriteStream', function (writeStream, peer, decrypt) {
-    writeStream.on('header', function (meta) {
-      console.log('incoming file size:', meta.size);
-      writeStream.on('progress', function (size) {
-        console.log('already received:', size);
-        if (meta.size <= size) {
-          writeStream.end();
-          decrypt.end();
-          _this.emit('acceptFiles', peer);
-        }
-      });
+  this.on('handleDownload', function (meta, peer, writeStream, decrypt) {
+    var shasum = crypto.createHash('sha1').update(meta.name);
+    var fileID = shasum.digest('hex');
+    _this.emit('addFileButton', meta.name, fileID);
+    console.log('incoming file size:', meta.size);
+    writeStream.on('progress', function (progress) {
+      _this.emit('endWriteStream', writeStream, peer, decrypt, meta.size, progress);
+      _this.emit('updateProgress', meta.name, fileID, meta.size, progress);
     });
   });
 
+  this.on('endWriteStream', function (writeStream, peer, decrypt, overall, progress) {
+    if (overall <= progress) {
+      writeStream.end();
+      decrypt.end();
+      _this.emit('acceptFiles', peer);
+    }
+  });
+
+  this.on('addFileButton', function (fileName, fileID) {
+    console.log('fileid', fileID);
+    var filesArea = document.getElementById('files');
+    filesArea.innerHTML = '<a id=downloadLink class=\'button browse red ' + fileID + '\' style=cursor:default;width:100%;height:62px;line-height:62px;margin-bottom:13px;text-transform:none;opacity:1;background-image:url(green-big.png);background-repeat:no-repeat;background-position-x:-436px; target=_blank>' + fileName + '</a>' + filesArea.innerHTML;
+  });
+
+  this.on('updateProgress', function (name, fileID, overall, size) {
+    var fileButton = document.getElementsByClassName(fileID)[0];
+    var margin = -1 * (436 - 436 * size / overall);
+    fileButton.style.backgroundPositionX = margin + 'px';
+  });
+
   this.on('attachFileURL', function (file) {
+    var shasum = crypto.createHash('sha1');
+    shasum.update(file.name);
+    var fileID = shasum.digest('hex');
+    var fileButton = document.getElementsByClassName(fileID)[0];
     var fileLink = detect('URL').createObjectURL(file);
-    var filesAread = document.getElementById('files');
-    filesAread.innerHTML = '<a id=downloadLink class=\'button browse red\' style=cursor:pointer;width:100%;height:62px;line-height:62px;margin-bottom:13px;text-transform:none;opacity:1; target=_blank href=' + fileLink + ' download="' + file.name + '">' + file.name + '</a>' + filesAread.innerHTML;
+    fileButton.href = fileLink;
+    fileButton.download = file.name;
+    fileButton.style.cursor = 'pointer';
   });
 
   this.on('fileAdded', function (input) {
@@ -24727,10 +24754,21 @@ function Dispatcher(opts) {
 
   this.on('sendFile', function (file, peer) {
     console.log('sending file to peer:', peer);
+    uploadbtn.style['cursor'] = 'default';
+    uploadbtn.onclick = function (x) {
+      return null;
+    };
+    uploadbtn.text = 'sending';
+    uploadbtn.className = uploadbtn.className.replace('green', 'red');
+    uploadbtn.className = uploadbtn.className.replace('send', 'process');
     var encrypt = crypto.createCipher(algorithm, mesh.password);
     file.pipe(encrypt).pipe(peer, { end: false });
     file.on('end', function (x) {
-      return console.log('sadly this also ends the peer stream :-(');
+      _this.emit('updateSendButton');
+      uploadbtn.onclick = function (x) {
+        return document.getElementById('send').click();
+      };
+      console.log('sadly this would also ends the peer stream :-(');
     });
   });
 }
