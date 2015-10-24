@@ -24794,7 +24794,7 @@ function Mesh(opts) {
   if (!this.namespace) {
     this.namespace = opts.namespace || cuid.slug();
     this.password = opts.password || cuid();
-    this.wrtc = webrtcSwarm(signalhub(this.namespace, ['http://localhost:7000']), {});['peer', 'connect', 'disconnect'].forEach(function (event) {
+    this.wrtc = webrtcSwarm(signalhub(this.namespace, ['https://peerjs.guth.so:65116']), {});['peer', 'connect', 'disconnect'].forEach(function (event) {
       _this.wrtc.on(event, function (x) {
         return _this.emit(event, x);
       });
