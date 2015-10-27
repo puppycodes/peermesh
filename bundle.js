@@ -24710,15 +24710,17 @@ function Dispatcher(opts) {
     _this.emit('addFileButton', meta.name, fileID);
     console.log('incoming file size:', meta.size);
     writeStream.on('progress', function (progress) {
-      _this.emit('endWriteStream', writeStream, peer, decrypt, meta.size, progress);
+      _this.emit('endWriteStream', writeStream, peer, decrypt, meta.size, progress, fileID);
       _this.emit('updateProgress', meta.name, fileID, meta.size, progress);
     });
   });
 
-  this.on('endWriteStream', function (writeStream, peer, decrypt, overall, progress) {
+  this.on('endWriteStream', function (writeStream, peer, decrypt, overall, progress, fileID) {
     if (overall <= progress) {
       writeStream.end();
       decrypt.end();
+      var fileButton = document.getElementsByClassName(fileID)[0];
+      fileButton.className = fileButton.className.replace('receive', 'browse');
       _this.emit('acceptFiles', peer);
     }
   });
@@ -24726,7 +24728,7 @@ function Dispatcher(opts) {
   this.on('addFileButton', function (fileName, fileID) {
     console.log('fileid', fileID);
     var filesArea = document.getElementById('files');
-    filesArea.innerHTML = '<a id=downloadLink class=\'button browse red ' + fileID + '\' style=cursor:default;width:100%;height:62px;line-height:62px;margin-bottom:13px;text-transform:none;opacity:1;background-image:url(green-big.png);background-repeat:no-repeat;background-position-x:-436px; target=_blank>' + fileName + '</a>' + filesArea.innerHTML;
+    filesArea.innerHTML = '<a id=downloadLink class=\'button receive red ' + fileID + '\' style=\'cursor:default;\n        width:100%;height:62px;line-height:62px;margin-bottom:13px;\n        text-transform:none;opacity:1;background-image:url(green-big.png);\n        background-repeat:no-repeat;background-position-x:-436px;\'\n        target=_blank>' + fileName + '</a>' + filesArea.innerHTML;
   });
 
   this.on('updateProgress', function (name, fileID, overall, size) {
@@ -24794,7 +24796,7 @@ function Mesh(opts) {
   if (!this.namespace) {
     this.namespace = opts.namespace || cuid.slug();
     this.password = opts.password || cuid();
-    this.wrtc = webrtcSwarm(signalhub(this.namespace, ['https://peerjs.guth.so:65116']), {});['peer', 'connect', 'disconnect'].forEach(function (event) {
+    this.wrtc = webrtcSwarm(signalhub(this.namespace, ['http://localhost:7000']), {});['peer', 'connect', 'disconnect'].forEach(function (event) {
       _this.wrtc.on(event, function (x) {
         return _this.emit(event, x);
       });
